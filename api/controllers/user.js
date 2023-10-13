@@ -21,28 +21,60 @@ export const addUser = (req, res) => {
     req.body.data_nascimento,
   ];
 
-  db.query(q, [values], (err) => {
-    if (err) return res.json(err);
+  db.query(q, [values], (err, data) => {
+    if (err)
+      return res.status(400).json({
+        status: 0,
+        message: err.sqlMessage,
+      });
 
-    return res.status(200).json("Usuário criado com sucesso.");
+    return res.status(200).json({
+      status: 1,
+      id: data.insertId,
+      message: "Usuário criado com sucesso.",
+    });
   });
 };
 
-export const updateUser = (req, res) => {
-  const q =
-    "UPDATE usuarios SET `nome` = ?, `email` = ?, `fone` = ?, `data_nascimento` = ? WHERE `id` = ?";
+export const updateUser = async (req, res) => {
+  const id = req.params.id;
 
-  const values = [
-    req.body.nome,
-    req.body.email,
-    req.body.fone,
-    req.body.data_nascimento,
-  ];
+  const query = "SELECT * FROM usuarios WHERE `id` = ?";
 
-  db.query(q, [...values, req.params.id], (err) => {
-    if (err) return res.json(err);
+  db.query(query, [id], (err, data) => {
+    if (!data.length)
+      return res.status(404).json({
+        status: 0,
+        id,
+        message: `cannot find user with id ${id}`,
+      });
 
-    return res.status(200).json("Usuário atualizado com sucesso.");
+    const user = data[0];
+    const { nome, email, fone, data_nascimento } = req.body;
+
+    const updateQuery =
+      "UPDATE usuarios SET `nome` = ?, `email` = ?, `fone` = ?, `data_nascimento` = ? WHERE `id` = ?";
+
+    const values = [
+      nome ? nome : user.nome,
+      email ? email : user.email,
+      fone ? fone : user.fone,
+      data_nascimento ? data_nascimento : user.data_nascimento,
+    ];
+
+    return db.query(updateQuery, [...values, id], (err) => {
+      if (err)
+        return res.status(400).json({
+          status: 0,
+          message: err.sqlMessage,
+        });
+
+      return res.status(200).json({
+        status: 1,
+        id,
+        message: "user updated successfully",
+      });
+    });
   });
 };
 
